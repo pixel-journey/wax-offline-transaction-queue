@@ -1,15 +1,14 @@
 # Verification log
 
 **Trust label:** educational-reference  
-**Updated:** 2026-10-22 (structured queue deepen)
+**Updated:** 2026-10-22 (localStorage adapter)
 
 | Claim | Evidence | State |
 | --- | --- | --- |
-| Legacy FIFO rules | `src/queue.test.ts` | verified (unit) |
-| Structured enqueue / markNext / conflicts | `src/queue.test.ts` | verified (unit) |
-| Snapshot round-trip | `src/queue.test.ts` | verified (unit) |
+| Legacy + structured queue | `src/queue.test.ts` | verified (unit) |
+| localStorage save/load/clear | `src/storage.test.ts` (memory mock) | verified (unit) |
 | Requests built not sent | `src/usecases.test.ts` | verified (unit) |
-| Live broadcast path | none | **not claimed** |
+| Live broadcast | none | **not claimed** |
 
 ```bash
 npm test && npm run typecheck
