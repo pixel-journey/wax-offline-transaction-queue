@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { RelatedBlueprints } from "./RelatedBlueprints";
 import {
   conflictHints,
   emptyQueue,
@@ -266,6 +267,8 @@ export function Demo() {
         <summary>JSON snapshot</summary>
         <pre className="overflow-x-auto mt-2">{serializeQueue(state)}</pre>
       </details>
+
+      <RelatedBlueprints />
     </main>
   );
 }
