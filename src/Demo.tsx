@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   conflictHints,
   emptyQueue,
@@ -11,6 +11,11 @@ import {
   serializeQueue,
   setItemStatus,
 } from "./queue";
+import {
+  clearQueueLocalStorage,
+  loadQueueFromLocalStorage,
+  saveQueueToLocalStorage,
+} from "./storage";
 import type { QueueState } from "./types";
 
 const PRESETS = [
@@ -25,9 +30,27 @@ export function Demo() {
   const [account, setAccount] = useState("eosio.token");
   const [name, setName] = useState("transfer");
   const [message, setMessage] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const loaded = loadQueueFromLocalStorage();
+    if (loaded.ok && loaded.value) {
+      setState(loaded.value);
+      setMessage(`Restored ${loaded.value.items.length} item(s) from localStorage`);
+    }
+    setHydrated(true);
+  }, []);
 
   const next = useMemo(() => peekNext(state), [state]);
   const hints = useMemo(() => conflictHints(state), [state]);
+
+  const applyState = (nextState: QueueState, note: string) => {
+    setState(nextState);
+    const saved = saveQueueToLocalStorage(nextState);
+    setMessage(
+      saved.ok ? note : `${note} · storage: ${saved.reason ?? "failed"}`
+    );
+  };
 
   const push = () => {
     const r = enqueueItem(state, { account: account.trim(), name: name.trim() });
@@ -35,8 +58,7 @@ export function Demo() {
       setMessage(r.reason);
       return;
     }
-    setState(r.state);
-    setMessage(`Queued ${r.item.account}::${r.item.name}`);
+    applyState(r.state, `Queued ${r.item.account}::${r.item.name}`);
   };
 
   const copyMd = async () => {
@@ -55,8 +77,8 @@ export function Demo() {
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="lede text-sm opacity-60">
-        FIFO drafts with a hard active cap. Status transitions are local only —
-        nothing is signed or broadcast.
+        FIFO drafts with optional localStorage persistence. Nothing is signed or
+        broadcast.
       </p>
 
       <section className="rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3">
@@ -106,6 +128,9 @@ export function Demo() {
           <span className="font-mono text-emerald-400">
             {next ? `${next.account}::${next.name}` : "(none)"}
           </span>
+          {!hydrated && (
+            <span className="text-xs opacity-40 ml-2">hydrating…</span>
+          )}
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -113,7 +138,7 @@ export function Demo() {
             className="px-2 py-1 rounded-lg text-xs bg-white/10"
             onClick={() => {
               const r = markNext(state, "ready");
-              if (r.ok) setState(r.state);
+              if (r.ok) applyState(r.state, "Marked next ready");
               else setMessage(r.reason);
             }}
           >
@@ -124,7 +149,7 @@ export function Demo() {
             className="px-2 py-1 rounded-lg text-xs bg-amber-800/80"
             onClick={() => {
               const r = markNext(state, "failed");
-              if (r.ok) setState(r.state);
+              if (r.ok) applyState(r.state, "Marked next failed");
               else setMessage(r.reason);
             }}
           >
@@ -135,7 +160,7 @@ export function Demo() {
             className="px-2 py-1 rounded-lg text-xs bg-white/10"
             onClick={() => {
               const r = markNext(state, "cancelled");
-              if (r.ok) setState(r.state);
+              if (r.ok) applyState(r.state, "Cancelled next");
               else setMessage(r.reason);
             }}
           >
@@ -150,10 +175,38 @@ export function Demo() {
           </button>
           <button
             type="button"
-            className="px-2 py-1 rounded-lg text-xs bg-white/10"
-            onClick={() => setState(emptyQueue())}
+            className="px-2 py-1 rounded-lg text-xs bg-violet-700"
+            onClick={() => {
+              const r = saveQueueToLocalStorage(state);
+              setMessage(
+                r.ok ? "Saved to localStorage" : r.reason ?? "Save failed"
+              );
+            }}
           >
-            Clear
+            Save
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-violet-700/70"
+            onClick={() => {
+              const r = loadQueueFromLocalStorage();
+              if (r.ok && r.value) {
+                setState(r.value);
+                setMessage(`Loaded ${r.value.items.length} item(s)`);
+              } else setMessage(r.reason ?? "Load failed");
+            }}
+          >
+            Load
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-white/10"
+            onClick={() => {
+              clearQueueLocalStorage();
+              applyState(emptyQueue(), "Cleared memory + storage");
+            }}
+          >
+            Clear all
           </button>
         </div>
       </section>
@@ -178,7 +231,7 @@ export function Demo() {
                   className="text-[10px] underline opacity-60"
                   onClick={() => {
                     const r = setItemStatus(state, item.id, "cancelled");
-                    if (r.ok) setState(r.state);
+                    if (r.ok) applyState(r.state, `Cancelled ${item.id}`);
                   }}
                 >
                   cancel
