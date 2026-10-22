@@ -2,10 +2,28 @@
 
 > **Trust Label:** `educational-reference`  
 > **Verification:** [VERIFICATION-LOG.md](VERIFICATION-LOG.md)  
-> **Status:** 🔄 Mid-tier deepen — structured queue + localStorage + related  
+> **WharfKit path:** [WHARFKIT-AND-OFFLINE-FLOW.md](WHARFKIT-AND-OFFLINE-FLOW.md)  
 > **Parent Catalog:** [wax-ecosystem-blueprint-catalog](https://github.com/pixel-journey/wax-ecosystem-blueprint-catalog)
 
-Pure **offline FIFO** for educational action drafts, with optional browser **localStorage** persistence. Nothing is signed or broadcast.
+## What this is (the real WAX angle)
+
+A **client-side draft queue** for dApps:
+
+1. User is offline (or just browsing) → app **enqueues** intended actions (`eosio.token` / `transfer`, etc.).
+2. User is back online → UI walks the queue **FIFO**.
+3. For each confirmed draft → host app signs with **WharfKit Session Kit** (`session.transact`), not with this library.
+
+This repo implements the **queue + localStorage + conflict hints**. It does **not** call the chain.
+
+## Prefer WharfKit
+
+| Recommended | Avoid for new projects |
+|-------------|-------------------------|
+| `@wharfkit/session` + wallet plugins | **eosjs** |
+| `@wharfkit/web-renderer` | **UAL** |
+| `@wharfkit/wallet-plugin-anchor` (etc.) | Standalone **Anchor Link** as primary integration |
+
+See [WHARFKIT-AND-OFFLINE-FLOW.md](WHARFKIT-AND-OFFLINE-FLOW.md) for session login/restore/`transact` orientation and a draft→actions sketch.
 
 ## Quick start
 
@@ -17,17 +35,11 @@ npm install && npm test && npm run dev
 
 | Piece | Role |
 |-------|------|
-| Legacy `enqueue` / `dequeue` | Name-only FIFO (cap 5) |
 | `enqueueItem` + statuses | Structured drafts |
 | `conflictHints` | Duplicate active pairs |
-| Snapshot JSON / markdown | Portable export |
-| `storage.ts` | Soft-fail localStorage save / load / clear |
-| Demo | Auto-hydrate + controls + related blueprints |
-
-## Non-goals
-
-- No wallet session or `push_transaction`
-- Storage may be blocked (private mode / SSR) — pure queue still works in memory
+| `storage.ts` | Soft-fail localStorage |
+| `draftToActions` | Map draft → `session.transact` action shape (no call) |
+| Demo | Interactive offline UI |
 
 ## License
 
