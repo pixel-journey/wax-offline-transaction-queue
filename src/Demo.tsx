@@ -78,9 +78,36 @@ export function Demo() {
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="lede text-sm opacity-60">
-        FIFO drafts with optional localStorage persistence. Nothing is signed or
-        broadcast.
+        Client-side draft FIFO. When online, drain with WharfKit Session Kit — not
+        eosjs or Anchor Link as the primary path.
       </p>
+
+      <section
+        className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100/90"
+        role="note"
+      >
+        <p className="font-medium">WAX angle</p>
+        <ul className="list-disc pl-5 space-y-1 text-xs leading-relaxed mt-1">
+          <li>Queue actions while offline or while the user is still deciding.</li>
+          <li>On reconnect, walk the list FIFO and confirm each draft.</li>
+          <li>
+            Sign with <strong>WharfKit</strong> (<code className="text-[10px]">SessionKit</code>{" "}
+            → <code className="text-[10px]">session.transact</code>). Prefer wallet plugins over
+            standalone Anchor Link; avoid eosjs for new work.
+          </li>
+          <li>
+            Full write-up:{" "}
+            <a
+              className="underline text-emerald-300"
+              href="https://github.com/pixel-journey/wax-offline-transaction-queue/blob/main/WHARFKIT-AND-OFFLINE-FLOW.md"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              WHARFKIT-AND-OFFLINE-FLOW.md
+            </a>
+          </li>
+        </ul>
+      </section>
 
       <section className="rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3">
         <div className="flex flex-wrap gap-2">
