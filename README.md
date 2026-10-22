@@ -1,23 +1,34 @@
-# First in, first out
+# wax-offline-transaction-queue
 
-**Trust label:** `educational-reference`  
-**Catalog:** [wax-ecosystem-blueprint-catalog](https://github.com/pixel-journey/wax-ecosystem-blueprint-catalog)
+> **Trust Label:** `educational-reference`  
+> **Verification:** [VERIFICATION-LOG.md](VERIFICATION-LOG.md)  
+> **Status:** 🔄 Mid-tier deepen — structured items + status + conflicts  
+> **Parent Catalog:** [wax-ecosystem-blueprint-catalog](https://github.com/pixel-journey/wax-ecosystem-blueprint-catalog)
 
-transfer comes out before stake. A sixth name is refused. Nothing is broadcast.
+Pure **offline FIFO** for educational action drafts. Nothing is signed or broadcast.
 
-The earlier README described a live product. This tree does not ship that.
+## Quick start
 
-## What is actually in the repo
+```bash
+npm install && npm test && npm run dev
+```
+
+## Surface
 
 | Piece | Role |
-| --- | --- |
-| `src/queue.ts` | The pure rules |
-| `src/queue.test.ts` | The claims in the verification log |
-| `src/usecases.ts` | HTTP requests, built and not sent |
-| `src/Demo.tsx` | Offline page |
+|-------|------|
+| Legacy `enqueue` / `dequeue` | Name-only FIFO (cap 5) |
+| `enqueueItem` | Account + action + optional data |
+| Status | `pending` · `ready` · `failed` · `cancelled` |
+| `conflictHints` | Duplicate active account/action pairs |
+| Snapshot | `serializeQueue` / `parseQueue` / markdown export |
+| Demo | Interactive offline UI |
 
-`npm test` runs the rules. `npm run dev` opens the page.
+## Non-goals
 
-## Queries
+- No wallet session, no `push_transaction`, no durable IndexedDB adapter in this pass
+- Status changes are local education only
 
-`executed` is false. This repo did not call any host. No transaction is invented.
+## License
+
+MIT — **Pixel Journey**
