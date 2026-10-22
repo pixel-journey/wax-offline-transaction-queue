@@ -2,10 +2,10 @@
 
 > **Trust Label:** `educational-reference`  
 > **Verification:** [VERIFICATION-LOG.md](VERIFICATION-LOG.md)  
-> **Status:** 🔄 Mid-tier deepen — structured items + status + conflicts  
+> **Status:** 🔄 Mid-tier deepen — structured queue + localStorage  
 > **Parent Catalog:** [wax-ecosystem-blueprint-catalog](https://github.com/pixel-journey/wax-ecosystem-blueprint-catalog)
 
-Pure **offline FIFO** for educational action drafts. Nothing is signed or broadcast.
+Pure **offline FIFO** for educational action drafts, with optional browser **localStorage** persistence. Nothing is signed or broadcast.
 
 ## Quick start
 
@@ -18,16 +18,16 @@ npm install && npm test && npm run dev
 | Piece | Role |
 |-------|------|
 | Legacy `enqueue` / `dequeue` | Name-only FIFO (cap 5) |
-| `enqueueItem` | Account + action + optional data |
-| Status | `pending` · `ready` · `failed` · `cancelled` |
-| `conflictHints` | Duplicate active account/action pairs |
-| Snapshot | `serializeQueue` / `parseQueue` / markdown export |
-| Demo | Interactive offline UI |
+| `enqueueItem` + statuses | Structured drafts |
+| `conflictHints` | Duplicate active pairs |
+| Snapshot JSON / markdown | Portable export |
+| **`storage.ts`** | Soft-fail `localStorage` save / load / clear |
+| Demo | Auto-hydrate + Save / Load / Clear all |
 
 ## Non-goals
 
-- No wallet session, no `push_transaction`, no durable IndexedDB adapter in this pass
-- Status changes are local education only
+- No wallet session or `push_transaction`
+- Storage may be blocked (private mode / SSR) — pure queue still works in memory
 
 ## License
 
