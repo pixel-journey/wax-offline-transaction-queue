@@ -13,6 +13,13 @@ import {
   setItemStatus,
 } from "./queue";
 import {
+  exportDrainPlanMarkdown,
+  markAllPendingReady,
+  moveActive,
+  purgeTerminal,
+  simulateDrainStep,
+} from "./queueOps";
+import {
   clearQueueLocalStorage,
   loadQueueFromLocalStorage,
   saveQueueToLocalStorage,
@@ -30,6 +37,7 @@ export function Demo() {
   const [state, setState] = useState<QueueState>(() => emptyQueue());
   const [account, setAccount] = useState("eosio.token");
   const [name, setName] = useState("transfer");
+  const [actor, setActor] = useState("alice.wam");
   const [message, setMessage] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -62,10 +70,10 @@ export function Demo() {
     applyState(r.state, `Queued ${r.item.account}::${r.item.name}`);
   };
 
-  const copyMd = async () => {
+  const copy = async (text: string, ok: string) => {
     try {
-      await navigator.clipboard.writeText(exportQueueMarkdown(state));
-      setMessage("Markdown snapshot copied");
+      await navigator.clipboard.writeText(text);
+      setMessage(ok);
     } catch {
       setMessage("Clipboard unavailable");
     }
@@ -74,40 +82,12 @@ export function Demo() {
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference
+        Educational reference · Passes 8–10
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="lede text-sm opacity-60">
-        Client-side draft FIFO. When online, drain with WharfKit Session Kit — not
-        eosjs or Anchor Link as the primary path.
+        Client-side draft FIFO. Drain online with WharfKit — not eosjs as primary.
       </p>
-
-      <section
-        className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100/90"
-        role="note"
-      >
-        <p className="font-medium">WAX angle</p>
-        <ul className="list-disc pl-5 space-y-1 text-xs leading-relaxed mt-1">
-          <li>Queue actions while offline or while the user is still deciding.</li>
-          <li>On reconnect, walk the list FIFO and confirm each draft.</li>
-          <li>
-            Sign with <strong>WharfKit</strong> (<code className="text-[10px]">SessionKit</code>{" "}
-            → <code className="text-[10px]">session.transact</code>). Prefer wallet plugins over
-            standalone Anchor Link; avoid eosjs for new work.
-          </li>
-          <li>
-            Full write-up:{" "}
-            <a
-              className="underline text-emerald-300"
-              href="https://github.com/pixel-journey/wax-offline-transaction-queue/blob/main/WHARFKIT-AND-OFFLINE-FLOW.md"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              WHARFKIT-AND-OFFLINE-FLOW.md
-            </a>
-          </li>
-        </ul>
-      </section>
 
       <section className="rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3">
         <div className="flex flex-wrap gap-2">
@@ -126,7 +106,7 @@ export function Demo() {
           ))}
         </div>
         <label className="block text-xs opacity-70">
-          Account
+          Contract account
           <input
             value={account}
             onChange={(e) => setAccount(e.target.value)}
@@ -141,6 +121,14 @@ export function Demo() {
             className="mt-1 w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 font-mono text-sm"
           />
         </label>
+        <label className="block text-xs opacity-70">
+          Actor (drain plan)
+          <input
+            value={actor}
+            onChange={(e) => setActor(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 font-mono text-sm"
+          />
+        </label>
         <button
           type="button"
           onClick={push}
@@ -152,7 +140,7 @@ export function Demo() {
 
       <section className="rounded-2xl border border-white/10 bg-black/30 p-4 space-y-2">
         <p className="text-sm">
-          Next active:{" "}
+          Next:{" "}
           <span className="font-mono text-emerald-400">
             {next ? `${next.account}::${next.name}` : "(none)"}
           </span>
@@ -174,6 +162,31 @@ export function Demo() {
           </button>
           <button
             type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-white/10"
+            onClick={() => {
+              const r = markAllPendingReady(state);
+              applyState(r.state, `Marked ${r.count} pending → ready`);
+            }}
+          >
+            All pending → ready
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-emerald-900"
+            onClick={() => {
+              const r = simulateDrainStep(state);
+              if (r.ok)
+                applyState(
+                  r.state,
+                  `Simulated drain of ${r.item.account}::${r.item.name}`
+                );
+              else setMessage(r.reason);
+            }}
+          >
+            Simulate drain step
+          </button>
+          <button
+            type="button"
             className="px-2 py-1 rounded-lg text-xs bg-amber-800/80"
             onClick={() => {
               const r = markNext(state, "failed");
@@ -187,51 +200,47 @@ export function Demo() {
             type="button"
             className="px-2 py-1 rounded-lg text-xs bg-white/10"
             onClick={() => {
-              const r = markNext(state, "cancelled");
-              if (r.ok) applyState(r.state, "Cancelled next");
-              else setMessage(r.reason);
+              const r = purgeTerminal(state);
+              applyState(r.state, `Purged ${r.removed} terminal item(s)`);
             }}
           >
-            Cancel next
+            Purge terminal
           </button>
           <button
             type="button"
             className="px-2 py-1 rounded-lg text-xs bg-sky-700"
-            onClick={copyMd}
+            onClick={() => copy(exportQueueMarkdown(state), "Queue MD copied")}
           >
-            Copy markdown
+            Copy queue MD
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-sky-900"
+            onClick={() =>
+              copy(
+                exportDrainPlanMarkdown(state, actor.trim() || "alice.wam"),
+                "Drain plan copied"
+              )
+            }
+          >
+            Copy drain plan
           </button>
           <button
             type="button"
             className="px-2 py-1 rounded-lg text-xs bg-violet-700"
             onClick={() => {
               const r = saveQueueToLocalStorage(state);
-              setMessage(
-                r.ok ? "Saved to localStorage" : r.reason ?? "Save failed"
-              );
+              setMessage(r.ok ? "Saved" : r.reason ?? "Save failed");
             }}
           >
             Save
           </button>
           <button
             type="button"
-            className="px-2 py-1 rounded-lg text-xs bg-violet-700/70"
-            onClick={() => {
-              const r = loadQueueFromLocalStorage();
-              if (r.ok && r.value) {
-                setState(r.value);
-                setMessage(`Loaded ${r.value.items.length} item(s)`);
-              } else setMessage(r.reason ?? "Load failed");
-            }}
-          >
-            Load
-          </button>
-          <button
-            type="button"
             className="px-2 py-1 rounded-lg text-xs bg-white/10"
             onClick={() => {
               clearQueueLocalStorage();
-              applyState(emptyQueue(), "Cleared memory + storage");
+              applyState(emptyQueue(), "Cleared");
             }}
           >
             Clear all
@@ -254,16 +263,40 @@ export function Demo() {
             <span className="flex flex-col items-end gap-1">
               <span className="text-xs opacity-70">{item.status}</span>
               {(item.status === "pending" || item.status === "ready") && (
-                <button
-                  type="button"
-                  className="text-[10px] underline opacity-60"
-                  onClick={() => {
-                    const r = setItemStatus(state, item.id, "cancelled");
-                    if (r.ok) applyState(r.state, `Cancelled ${item.id}`);
-                  }}
-                >
-                  cancel
-                </button>
+                <span className="flex gap-2 text-[10px]">
+                  <button
+                    type="button"
+                    className="underline opacity-60"
+                    onClick={() => {
+                      const r = moveActive(state, item.id, "up");
+                      if (r.ok) applyState(r.state, "Moved up");
+                      else setMessage(r.reason);
+                    }}
+                  >
+                    up
+                  </button>
+                  <button
+                    type="button"
+                    className="underline opacity-60"
+                    onClick={() => {
+                      const r = moveActive(state, item.id, "down");
+                      if (r.ok) applyState(r.state, "Moved down");
+                      else setMessage(r.reason);
+                    }}
+                  >
+                    down
+                  </button>
+                  <button
+                    type="button"
+                    className="underline opacity-60"
+                    onClick={() => {
+                      const r = setItemStatus(state, item.id, "cancelled");
+                      if (r.ok) applyState(r.state, `Cancelled ${item.id}`);
+                    }}
+                  >
+                    cancel
+                  </button>
+                </span>
               )}
             </span>
           </li>
