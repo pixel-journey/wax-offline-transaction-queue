@@ -80,8 +80,8 @@ export function Demo() {
     [state]
   );
 
-  const applyState = (nextState: QueueState, msg: string, recordUndo = true) => {
-    if (recordUndo) setUndo((u) => pushUndo(u, state));
+  const applyState = (nextState: QueueState, msg: string) => {
+    setUndo((u) => pushUndo(u, state));
     setState(nextState);
     const saved = saveQueueToLocalStorage(nextState);
     setMessage(
@@ -134,7 +134,7 @@ export function Demo() {
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference · Pass 19
+        Educational reference · Passes 1–20 frozen
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="text-xs opacity-50 font-mono">{summaryLine(state)}</p>

@@ -1,16 +1,18 @@
 # wax-offline-transaction-queue
 
 > **Trust label:** `educational-reference`  
-> **Passes:** through 10 (reorder, purge, drain plan)
+> **Status:** Passes **1–20 frozen** (2026-10-23)
 
-Client-side **FIFO of action drafts** for offline / deferred UX on WAX. Nothing is signed or broadcast in this repo.
+Client-side **FIFO of action drafts** for offline / deferred WAX UX. Nothing is signed or broadcast here.
 
-## Core API
+## Highlights
 
-- `enqueueItem` / `markNext` / `conflictHints` / localStorage adapter
-- **Pass 8–10:** `moveActive`, `purgeTerminal`, `markAllPendingReady`, `simulateDrainStep`, `exportDrainPlanMarkdown`
+- Enqueue / status FSM / conflict hints / localStorage
+- Reorder, purge, TTL, import JSON, connectivity probe
+- Notes, search, filters, maxPending, duplicate, action `data` JSON
+- Undo stack, markdown / CSV / drain-plan exports
 
-Prefer **WharfKit** (`SessionKit` → `session.transact`) when draining online. See [WHARFKIT-AND-OFFLINE-FLOW.md](./WHARFKIT-AND-OFFLINE-FLOW.md).
+When going online, prefer **WharfKit** (`SessionKit` → `session.transact`). See [WHARFKIT-AND-OFFLINE-FLOW.md](./WHARFKIT-AND-OFFLINE-FLOW.md).
 
 ```bash
 npm install && npm test && npm run dev
