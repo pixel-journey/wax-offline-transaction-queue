@@ -26,8 +26,9 @@ import {
   loadQueueFromLocalStorage,
   saveQueueToLocalStorage,
 } from "./storage";
+import { countByStatus, filterByStatus, summaryLine } from "./summary";
 import { DEFAULT_TTL_MS, expireStale, listExpired } from "./ttl";
-import type { QueueState } from "./types";
+import type { QueueState, QueueStatus } from "./types";
 
 const PRESETS = [
   { account: "eosio.token", name: "transfer" },
@@ -36,12 +37,15 @@ const PRESETS = [
   { account: "atomicassets", name: "transfer" },
 ] as const;
 
+type Filter = QueueStatus | "active" | "all";
+
 export function Demo() {
   const [state, setState] = useState<QueueState>(() => emptyQueue());
   const [account, setAccount] = useState("eosio.token");
   const [name, setName] = useState("transfer");
   const [actor, setActor] = useState("alice.wam");
   const [importText, setImportText] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
   const [message, setMessage] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [probing, setProbing] = useState(false);
@@ -57,6 +61,8 @@ export function Demo() {
 
   const next = useMemo(() => peekNext(state), [state]);
   const hints = useMemo(() => conflictHints(state), [state]);
+  const counts = useMemo(() => countByStatus(state), [state]);
+  const visible = useMemo(() => filterByStatus(state, filter), [state, filter]);
   const expiredCount = useMemo(
     () => listExpired(state, DEFAULT_TTL_MS).length,
     [state]
@@ -91,12 +97,10 @@ export function Demo() {
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference · Passes 11–13
+        Educational reference · Pass 14
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
-      <p className="lede text-sm opacity-60">
-        Draft FIFO + TTL + import. Drain online with WharfKit only when you mean it.
-      </p>
+      <p className="text-xs opacity-50 font-mono">{summaryLine(state)}</p>
 
       <section className="rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3">
         <div className="flex flex-wrap gap-2">
@@ -162,6 +166,27 @@ export function Demo() {
             <span className="text-xs opacity-40 ml-2">hydrating…</span>
           )}
         </p>
+        <div className="flex flex-wrap gap-1 text-[10px]">
+          {(["all", "active", "pending", "ready", "failed", "cancelled"] as Filter[]).map(
+            (f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={`px-2 py-1 rounded-lg ${
+                  filter === f ? "bg-emerald-700" : "bg-white/10"
+                }`}
+              >
+                {f}
+                {f === "all"
+                  ? ` ${counts.total}`
+                  : f === "active"
+                    ? ` ${counts.active}`
+                    : ` ${counts[f]}`}
+              </button>
+            )
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -304,7 +329,7 @@ export function Demo() {
       </section>
 
       <ul className="space-y-2 text-sm">
-        {state.items.map((item) => (
+        {visible.map((item) => (
           <li
             key={item.id}
             className="rounded-xl border border-white/10 px-3 py-2 flex justify-between gap-2"
@@ -356,8 +381,8 @@ export function Demo() {
             </span>
           </li>
         ))}
-        {state.items.length === 0 && (
-          <li className="text-xs opacity-50">Queue empty — enqueue a draft.</li>
+        {visible.length === 0 && (
+          <li className="text-xs opacity-50">No items in this filter.</li>
         )}
       </ul>
 
