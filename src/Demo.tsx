@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RelatedBlueprints } from "./RelatedBlueprints";
+import { duplicateDraft, setMaxPending } from "./capacity";
 import { probeChainHead } from "./connectivity";
 import { importQueueJson } from "./importQueue";
 import { searchItems, setItemNote } from "./notes";
@@ -108,13 +109,13 @@ export function Demo() {
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference · Pass 15
+        Educational reference · Pass 16
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="text-xs opacity-50 font-mono">{summaryLine(state)}</p>
 
       <section className="rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {PRESETS.map((p) => (
             <button
               key={`${p.account}-${p.name}`}
@@ -128,6 +129,21 @@ export function Demo() {
               {p.name}
             </button>
           ))}
+          <label className="text-[10px] opacity-60 flex items-center gap-1 ml-auto">
+            maxPending
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={state.maxPending}
+              onChange={(e) => {
+                const r = setMaxPending(state, Number(e.target.value));
+                if (r.ok) applyState(r.state, `maxPending → ${r.state.maxPending}`);
+                else setMessage(r.reason);
+              }}
+              className="w-14 bg-black/60 border border-white/10 rounded px-1 py-0.5 font-mono"
+            />
+          </label>
         </div>
         <label className="block text-xs opacity-70">
           Contract account
@@ -396,6 +412,17 @@ export function Demo() {
                       }}
                     >
                       down
+                    </button>
+                    <button
+                      type="button"
+                      className="underline opacity-60"
+                      onClick={() => {
+                        const r = duplicateDraft(state, item.id);
+                        if (r.ok) applyState(r.state, `Duplicated ${item.id}`);
+                        else setMessage(r.reason);
+                      }}
+                    >
+                      copy
                     </button>
                     <button
                       type="button"
