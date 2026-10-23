@@ -32,6 +32,7 @@ import {
 import { countByStatus, filterByStatus, summaryLine } from "./summary";
 import { DEFAULT_TTL_MS, expireStale, listExpired } from "./ttl";
 import type { QueueState, QueueStatus } from "./types";
+import { emptyUndo, popUndo, pushUndo, undoDepth, type UndoStack } from "./undo";
 
 const PRESETS = [
   { account: "eosio.token", name: "transfer" },
@@ -44,6 +45,7 @@ type Filter = QueueStatus | "active" | "all";
 
 export function Demo() {
   const [state, setState] = useState<QueueState>(() => emptyQueue());
+  const [undo, setUndo] = useState<UndoStack>(() => emptyUndo());
   const [account, setAccount] = useState("eosio.token");
   const [name, setName] = useState("transfer");
   const [note, setNote] = useState("");
@@ -77,12 +79,25 @@ export function Demo() {
     [state]
   );
 
-  const applyState = (nextState: QueueState, msg: string) => {
+  const applyState = (nextState: QueueState, msg: string, recordUndo = true) => {
+    if (recordUndo) setUndo((u) => pushUndo(u, state));
     setState(nextState);
     const saved = saveQueueToLocalStorage(nextState);
     setMessage(
       saved.ok ? msg : `${msg} · storage: ${saved.reason ?? "failed"}`
     );
+  };
+
+  const doUndo = () => {
+    const r = popUndo(undo);
+    if (!r.ok) {
+      setMessage(r.reason);
+      return;
+    }
+    setUndo(r.stack);
+    setState(r.state);
+    saveQueueToLocalStorage(r.state);
+    setMessage(`Undid · depth ${undoDepth(r.stack)}`);
   };
 
   const push = () => {
@@ -118,7 +133,7 @@ export function Demo() {
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference · Pass 17
+        Educational reference · Pass 18
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="text-xs opacity-50 font-mono">{summaryLine(state)}</p>
@@ -197,13 +212,23 @@ export function Demo() {
             className="mt-1 w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 font-mono text-sm"
           />
         </label>
-        <button
-          type="button"
-          onClick={push}
-          className="px-3 py-2 rounded-lg text-sm bg-emerald-700"
-        >
-          Enqueue draft
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={push}
+            className="px-3 py-2 rounded-lg text-sm bg-emerald-700"
+          >
+            Enqueue draft
+          </button>
+          <button
+            type="button"
+            onClick={doUndo}
+            disabled={undoDepth(undo) === 0}
+            className="px-3 py-2 rounded-lg text-sm bg-white/10 disabled:opacity-40"
+          >
+            Undo ({undoDepth(undo)})
+          </button>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-black/30 p-4 space-y-2">
