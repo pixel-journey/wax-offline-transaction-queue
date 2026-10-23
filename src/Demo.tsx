@@ -6,6 +6,7 @@ import { duplicateDraft, setMaxPending } from "./capacity";
 import { probeChainHead } from "./connectivity";
 import { importQueueJson } from "./importQueue";
 import { searchItems, setItemNote } from "./notes";
+import { dataPreview, parseDataJson, setItemData } from "./payload";
 import {
   conflictHints,
   emptyQueue,
@@ -46,6 +47,7 @@ export function Demo() {
   const [account, setAccount] = useState("eosio.token");
   const [name, setName] = useState("transfer");
   const [note, setNote] = useState("");
+  const [dataJson, setDataJson] = useState("");
   const [actor, setActor] = useState("alice.wam");
   const [importText, setImportText] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -84,16 +86,23 @@ export function Demo() {
   };
 
   const push = () => {
+    const parsed = parseDataJson(dataJson);
+    if (!parsed.ok) {
+      setMessage(parsed.reason);
+      return;
+    }
     const r = enqueueItem(state, {
       account: account.trim(),
       name: name.trim(),
       note: note.trim() || undefined,
+      data: parsed.data,
     });
     if (!r.ok) {
       setMessage(r.reason);
       return;
     }
     setNote("");
+    setDataJson("");
     applyState(r.state, `Queued ${r.item.account}::${r.item.name}`);
   };
 
@@ -109,7 +118,7 @@ export function Demo() {
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference · Pass 16
+        Educational reference · Pass 17
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="text-xs opacity-50 font-mono">{summaryLine(state)}</p>
@@ -168,7 +177,16 @@ export function Demo() {
             onChange={(e) => setNote(e.target.value)}
             maxLength={200}
             className="mt-1 w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-sm"
-            placeholder="e.g. nightly claim"
+          />
+        </label>
+        <label className="block text-xs opacity-70">
+          Action data JSON (optional object)
+          <textarea
+            value={dataJson}
+            onChange={(e) => setDataJson(e.target.value)}
+            rows={2}
+            placeholder='{"to":"bob.wam","quantity":"1.00000000 WAX"}'
+            className="mt-1 w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 font-mono text-[10px]"
           />
         </label>
         <label className="block text-xs opacity-70">
@@ -343,7 +361,6 @@ export function Demo() {
           onChange={(e) => setImportText(e.target.value)}
           rows={3}
           className="w-full font-mono text-[10px] bg-black/60 border border-white/10 rounded-lg p-2"
-          placeholder='{"items":[],"maxPending":5}'
         />
         <div className="flex flex-wrap gap-2">
           <button
@@ -378,7 +395,7 @@ export function Demo() {
             className="rounded-xl border border-white/10 px-3 py-2 space-y-1"
           >
             <div className="flex justify-between gap-2">
-              <span>
+              <span className="min-w-0">
                 <span className="font-mono text-xs opacity-50">{item.id}</span>
                 <span className="block font-mono text-emerald-300/90">
                   {item.account}::{item.name}
@@ -386,8 +403,13 @@ export function Demo() {
                 {item.note && (
                   <span className="block text-[11px] opacity-60">{item.note}</span>
                 )}
+                {item.data && (
+                  <span className="block text-[10px] font-mono opacity-40 truncate">
+                    {dataPreview(item)}
+                  </span>
+                )}
               </span>
-              <span className="flex flex-col items-end gap-1">
+              <span className="flex flex-col items-end gap-1 shrink-0">
                 <span className="text-xs opacity-70">{item.status}</span>
                 {(item.status === "pending" || item.status === "ready") && (
                   <span className="flex gap-2 text-[10px]">
@@ -423,6 +445,27 @@ export function Demo() {
                       }}
                     >
                       copy
+                    </button>
+                    <button
+                      type="button"
+                      className="underline opacity-60"
+                      onClick={() => {
+                        const raw = window.prompt(
+                          "data JSON object",
+                          item.data ? JSON.stringify(item.data) : "{}"
+                        );
+                        if (raw == null) return;
+                        const parsed = parseDataJson(raw);
+                        if (!parsed.ok) {
+                          setMessage(parsed.reason);
+                          return;
+                        }
+                        const r = setItemData(state, item.id, parsed.data);
+                        if (r.ok) applyState(r.state, "Data updated");
+                        else setMessage(r.reason);
+                      }}
+                    >
+                      data
                     </button>
                     <button
                       type="button"
