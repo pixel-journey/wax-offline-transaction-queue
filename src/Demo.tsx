@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RelatedBlueprints } from "./RelatedBlueprints";
 import { probeChainHead } from "./connectivity";
 import { importQueueJson } from "./importQueue";
+import { searchItems, setItemNote } from "./notes";
 import {
   conflictHints,
   emptyQueue,
@@ -43,9 +44,11 @@ export function Demo() {
   const [state, setState] = useState<QueueState>(() => emptyQueue());
   const [account, setAccount] = useState("eosio.token");
   const [name, setName] = useState("transfer");
+  const [note, setNote] = useState("");
   const [actor, setActor] = useState("alice.wam");
   const [importText, setImportText] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [probing, setProbing] = useState(false);
@@ -62,26 +65,34 @@ export function Demo() {
   const next = useMemo(() => peekNext(state), [state]);
   const hints = useMemo(() => conflictHints(state), [state]);
   const counts = useMemo(() => countByStatus(state), [state]);
-  const visible = useMemo(() => filterByStatus(state, filter), [state, filter]);
+  const visible = useMemo(() => {
+    const filtered = filterByStatus(state, filter);
+    return searchItems(filtered, query);
+  }, [state, filter, query]);
   const expiredCount = useMemo(
     () => listExpired(state, DEFAULT_TTL_MS).length,
     [state]
   );
 
-  const applyState = (nextState: QueueState, note: string) => {
+  const applyState = (nextState: QueueState, msg: string) => {
     setState(nextState);
     const saved = saveQueueToLocalStorage(nextState);
     setMessage(
-      saved.ok ? note : `${note} · storage: ${saved.reason ?? "failed"}`
+      saved.ok ? msg : `${msg} · storage: ${saved.reason ?? "failed"}`
     );
   };
 
   const push = () => {
-    const r = enqueueItem(state, { account: account.trim(), name: name.trim() });
+    const r = enqueueItem(state, {
+      account: account.trim(),
+      name: name.trim(),
+      note: note.trim() || undefined,
+    });
     if (!r.ok) {
       setMessage(r.reason);
       return;
     }
+    setNote("");
     applyState(r.state, `Queued ${r.item.account}::${r.item.name}`);
   };
 
@@ -97,7 +108,7 @@ export function Demo() {
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference · Pass 14
+        Educational reference · Pass 15
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="text-xs opacity-50 font-mono">{summaryLine(state)}</p>
@@ -135,6 +146,16 @@ export function Demo() {
           />
         </label>
         <label className="block text-xs opacity-70">
+          Note (optional)
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={200}
+            className="mt-1 w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-sm"
+            placeholder="e.g. nightly claim"
+          />
+        </label>
+        <label className="block text-xs opacity-70">
           Actor (drain plan)
           <input
             value={actor}
@@ -166,6 +187,12 @@ export function Demo() {
             <span className="text-xs opacity-40 ml-2">hydrating…</span>
           )}
         </p>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search id / account / action / note"
+          className="w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-xs font-mono"
+        />
         <div className="flex flex-wrap gap-1 text-[10px]">
           {(["all", "active", "pending", "ready", "failed", "cancelled"] as Filter[]).map(
             (f) => (
@@ -332,57 +359,78 @@ export function Demo() {
         {visible.map((item) => (
           <li
             key={item.id}
-            className="rounded-xl border border-white/10 px-3 py-2 flex justify-between gap-2"
+            className="rounded-xl border border-white/10 px-3 py-2 space-y-1"
           >
-            <span>
-              <span className="font-mono text-xs opacity-50">{item.id}</span>
-              <span className="block font-mono text-emerald-300/90">
-                {item.account}::{item.name}
-              </span>
-            </span>
-            <span className="flex flex-col items-end gap-1">
-              <span className="text-xs opacity-70">{item.status}</span>
-              {(item.status === "pending" || item.status === "ready") && (
-                <span className="flex gap-2 text-[10px]">
-                  <button
-                    type="button"
-                    className="underline opacity-60"
-                    onClick={() => {
-                      const r = moveActive(state, item.id, "up");
-                      if (r.ok) applyState(r.state, "Moved up");
-                      else setMessage(r.reason);
-                    }}
-                  >
-                    up
-                  </button>
-                  <button
-                    type="button"
-                    className="underline opacity-60"
-                    onClick={() => {
-                      const r = moveActive(state, item.id, "down");
-                      if (r.ok) applyState(r.state, "Moved down");
-                      else setMessage(r.reason);
-                    }}
-                  >
-                    down
-                  </button>
-                  <button
-                    type="button"
-                    className="underline opacity-60"
-                    onClick={() => {
-                      const r = setItemStatus(state, item.id, "cancelled");
-                      if (r.ok) applyState(r.state, `Cancelled ${item.id}`);
-                    }}
-                  >
-                    cancel
-                  </button>
+            <div className="flex justify-between gap-2">
+              <span>
+                <span className="font-mono text-xs opacity-50">{item.id}</span>
+                <span className="block font-mono text-emerald-300/90">
+                  {item.account}::{item.name}
                 </span>
-              )}
-            </span>
+                {item.note && (
+                  <span className="block text-[11px] opacity-60">{item.note}</span>
+                )}
+              </span>
+              <span className="flex flex-col items-end gap-1">
+                <span className="text-xs opacity-70">{item.status}</span>
+                {(item.status === "pending" || item.status === "ready") && (
+                  <span className="flex gap-2 text-[10px]">
+                    <button
+                      type="button"
+                      className="underline opacity-60"
+                      onClick={() => {
+                        const r = moveActive(state, item.id, "up");
+                        if (r.ok) applyState(r.state, "Moved up");
+                        else setMessage(r.reason);
+                      }}
+                    >
+                      up
+                    </button>
+                    <button
+                      type="button"
+                      className="underline opacity-60"
+                      onClick={() => {
+                        const r = moveActive(state, item.id, "down");
+                        if (r.ok) applyState(r.state, "Moved down");
+                        else setMessage(r.reason);
+                      }}
+                    >
+                      down
+                    </button>
+                    <button
+                      type="button"
+                      className="underline opacity-60"
+                      onClick={() => {
+                        const nextNote = window.prompt(
+                          "Note (max 200)",
+                          item.note ?? ""
+                        );
+                        if (nextNote == null) return;
+                        const r = setItemNote(state, item.id, nextNote);
+                        if (r.ok) applyState(r.state, "Note updated");
+                        else setMessage(r.reason);
+                      }}
+                    >
+                      note
+                    </button>
+                    <button
+                      type="button"
+                      className="underline opacity-60"
+                      onClick={() => {
+                        const r = setItemStatus(state, item.id, "cancelled");
+                        if (r.ok) applyState(r.state, `Cancelled ${item.id}`);
+                      }}
+                    >
+                      cancel
+                    </button>
+                  </span>
+                )}
+              </span>
+            </div>
           </li>
         ))}
         {visible.length === 0 && (
-          <li className="text-xs opacity-50">No items in this filter.</li>
+          <li className="text-xs opacity-50">No items in this filter/search.</li>
         )}
       </ul>
 

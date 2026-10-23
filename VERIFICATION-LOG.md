@@ -1,12 +1,12 @@
 # Verification log
 
 **Trust label:** educational-reference  
-**Updated:** 2026-10-23 (Pass 14)
+**Updated:** 2026-10-23 (Pass 15)
 
 | Claim | Evidence | State |
 | --- | --- | --- |
-| Queue core + ops 8–13 | unit | verified |
-| countByStatus / filter / summaryLine | `src/summary.test.ts` | verified |
+| Queue core + ops 8–14 | unit | verified |
+| setItemNote / searchItems | `src/notes.test.ts` | verified |
 | session.transact / broadcast | none | **not claimed** |
 
 ```bash
