@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RelatedBlueprints } from "./RelatedBlueprints";
 import { duplicateDraft, setMaxPending } from "./capacity";
 import { probeChainHead } from "./connectivity";
+import { exportQueueCsv } from "./csv";
 import { importQueueJson } from "./importQueue";
 import { searchItems, setItemNote } from "./notes";
 import { dataPreview, parseDataJson, setItemData } from "./payload";
@@ -133,7 +134,7 @@ export function Demo() {
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference · Pass 18
+        Educational reference · Pass 19
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="text-xs opacity-50 font-mono">{summaryLine(state)}</p>
@@ -353,6 +354,13 @@ export function Demo() {
             onClick={() => copy(exportQueueMarkdown(state), "Queue MD copied")}
           >
             Copy queue MD
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-teal-800"
+            onClick={() => copy(exportQueueCsv(state), "CSV copied")}
+          >
+            Copy CSV
           </button>
           <button
             type="button"
