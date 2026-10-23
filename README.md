@@ -1,21 +1,24 @@
 # wax-offline-transaction-queue
 
 > **Trust label:** `educational-reference`  
-> **Status:** Passes **1–20 frozen** (2026-10-23)
+> **Status:** Passes 1–20 frozen · Pass 21+ post-freeze (live drain sketch)
 
-Client-side **FIFO of action drafts** for offline / deferred WAX UX. Nothing is signed or broadcast here.
+Client-side **FIFO of action drafts** for offline / deferred WAX UX, plus a **real WharfKit drain sketch** for host apps.
 
-## Highlights
+## Layers
 
-- Enqueue / status FSM / conflict hints / localStorage
-- Reorder, purge, TTL, import JSON, connectivity probe
-- Notes, search, filters, maxPending, duplicate, action `data` JSON
-- Undo stack, markdown / CSV / drain-plan exports
+| Layer | Role |
+|-------|------|
+| Pure core | Queue, storage, TTL, export — never silent-broadcast |
+| Optional RPC probe | `get_info` soft-fail |
+| **Live drain** | `drainNextWithSession` → real `session.transact` when you pass a WharfKit session |
 
-When going online, prefer **WharfKit** (`SessionKit` → `session.transact`). See [WHARFKIT-AND-OFFLINE-FLOW.md](./WHARFKIT-AND-OFFLINE-FLOW.md).
+See [POLICY.md](./POLICY.md) and [WHARFKIT-AND-OFFLINE-FLOW.md](./WHARFKIT-AND-OFFLINE-FLOW.md).
 
 ```bash
 npm install && npm test && npm run dev
 ```
+
+In your dApp: install `@wharfkit/session`, login/restore, call `drainNextWithSession`.
 
 MIT — Pixel Journey

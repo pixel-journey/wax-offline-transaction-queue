@@ -1,13 +1,14 @@
 # Verification log
 
 **Trust label:** educational-reference  
-**Updated:** 2026-10-23 (Pass 21 post-freeze)
+**Updated:** 2026-10-23 (policy + live drain sketch)
 
 | Claim | Evidence | State |
 | --- | --- | --- |
-| Core through Pass 20 | unit + docs | verified / frozen |
-| downloadTextFile / basename | `src/download.test.ts` | verified |
-| session.transact / broadcast | none | **not claimed** |
+| Pure queue ops | unit | verified |
+| drainNextWithSession (mock session) | `liveDrain.sketch.test.ts` | verified |
+| Silent auto-broadcast in pure core | forbidden by design | |
+| Host WharfKit install + wallet UI | host app | **example provided** |
 
 ```bash
 npm test && npm run typecheck
