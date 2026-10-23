@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RelatedBlueprints } from "./RelatedBlueprints";
+import { probeChainHead } from "./connectivity";
+import { importQueueJson } from "./importQueue";
 import {
   conflictHints,
   emptyQueue,
@@ -24,6 +26,7 @@ import {
   loadQueueFromLocalStorage,
   saveQueueToLocalStorage,
 } from "./storage";
+import { DEFAULT_TTL_MS, expireStale, listExpired } from "./ttl";
 import type { QueueState } from "./types";
 
 const PRESETS = [
@@ -38,8 +41,10 @@ export function Demo() {
   const [account, setAccount] = useState("eosio.token");
   const [name, setName] = useState("transfer");
   const [actor, setActor] = useState("alice.wam");
+  const [importText, setImportText] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [probing, setProbing] = useState(false);
 
   useEffect(() => {
     const loaded = loadQueueFromLocalStorage();
@@ -52,6 +57,10 @@ export function Demo() {
 
   const next = useMemo(() => peekNext(state), [state]);
   const hints = useMemo(() => conflictHints(state), [state]);
+  const expiredCount = useMemo(
+    () => listExpired(state, DEFAULT_TTL_MS).length,
+    [state]
+  );
 
   const applyState = (nextState: QueueState, note: string) => {
     setState(nextState);
@@ -82,11 +91,11 @@ export function Demo() {
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference · Passes 8–10
+        Educational reference · Passes 11–13
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="lede text-sm opacity-60">
-        Client-side draft FIFO. Drain online with WharfKit — not eosjs as primary.
+        Draft FIFO + TTL + import. Drain online with WharfKit only when you mean it.
       </p>
 
       <section className="rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3">
@@ -144,6 +153,11 @@ export function Demo() {
           <span className="font-mono text-emerald-400">
             {next ? `${next.account}::${next.name}` : "(none)"}
           </span>
+          {expiredCount > 0 && (
+            <span className="text-amber-300 text-xs ml-2">
+              · {expiredCount} past 24h TTL
+            </span>
+          )}
           {!hydrated && (
             <span className="text-xs opacity-40 ml-2">hydrating…</span>
           )}
@@ -187,24 +201,40 @@ export function Demo() {
           </button>
           <button
             type="button"
-            className="px-2 py-1 rounded-lg text-xs bg-amber-800/80"
+            className="px-2 py-1 rounded-lg text-xs bg-amber-900"
             onClick={() => {
-              const r = markNext(state, "failed");
-              if (r.ok) applyState(r.state, "Marked next failed");
-              else setMessage(r.reason);
+              const r = expireStale(state);
+              applyState(r.state, `Expired ${r.expired} stale draft(s)`);
             }}
           >
-            Mark next failed
+            Expire &gt;24h
           </button>
           <button
             type="button"
             className="px-2 py-1 rounded-lg text-xs bg-white/10"
             onClick={() => {
               const r = purgeTerminal(state);
-              applyState(r.state, `Purged ${r.removed} terminal item(s)`);
+              applyState(r.state, `Purged ${r.removed} terminal`);
             }}
           >
             Purge terminal
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-sky-800 disabled:opacity-50"
+            disabled={probing}
+            onClick={async () => {
+              setProbing(true);
+              const r = await probeChainHead();
+              setProbing(false);
+              setMessage(
+                r.ok
+                  ? `Online probe ok · ${r.latencyMs}ms · still no auto-broadcast`
+                  : `Offline/soft-fail: ${r.reason}`
+              );
+            }}
+          >
+            {probing ? "Probing…" : "Probe get_info"}
           </button>
           <button
             type="button"
@@ -227,16 +257,6 @@ export function Demo() {
           </button>
           <button
             type="button"
-            className="px-2 py-1 rounded-lg text-xs bg-violet-700"
-            onClick={() => {
-              const r = saveQueueToLocalStorage(state);
-              setMessage(r.ok ? "Saved" : r.reason ?? "Save failed");
-            }}
-          >
-            Save
-          </button>
-          <button
-            type="button"
             className="px-2 py-1 rounded-lg text-xs bg-white/10"
             onClick={() => {
               clearQueueLocalStorage();
@@ -244,6 +264,41 @@ export function Demo() {
             }}
           >
             Clear all
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-black/40 p-4 space-y-2">
+        <p className="text-xs opacity-60">Import JSON snapshot</p>
+        <textarea
+          value={importText}
+          onChange={(e) => setImportText(e.target.value)}
+          rows={3}
+          className="w-full font-mono text-[10px] bg-black/60 border border-white/10 rounded-lg p-2"
+          placeholder='{"items":[],"maxPending":5}'
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-violet-800"
+            onClick={() => {
+              const r = importQueueJson(importText, state, "replace");
+              if (r.ok) applyState(r.state, "Imported (replace)");
+              else setMessage(r.reason);
+            }}
+          >
+            Import replace
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-violet-900"
+            onClick={() => {
+              const r = importQueueJson(importText, state, "append-active");
+              if (r.ok) applyState(r.state, "Imported (append-active)");
+              else setMessage(r.reason);
+            }}
+          >
+            Import append-active
           </button>
         </div>
       </section>

@@ -1,12 +1,13 @@
-# Refinement completion — wax-offline-transaction-queue
+# Refinement — wax-offline-transaction-queue
 
 **Trust label:** educational-reference  
-**Passes 8–10:** 2026-10-23
+**Through Pass 13** (2026-10-23)
 
-| Pass | Delivered |
+| Band | Delivered |
 |------|-----------|
-| 8 | `moveActive`, `purgeTerminal` |
-| 9 | `markAllPendingReady`, `simulateDrainStep`, drain plan MD |
-| 10 | Demo wiring + freeze notes |
+| 8–10 | Reorder, purge, drain plan, simulate step |
+| 11 | Draft TTL (24h default) + expireStale |
+| 12 | JSON import replace / append-active |
+| 13 | Soft-fail get_info connectivity probe |
 
-Still educational drafts only. Prefer WharfKit when implementing real drain.
+Still no WharfKit broadcast in-repo.
