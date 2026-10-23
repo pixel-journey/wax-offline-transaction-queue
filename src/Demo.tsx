@@ -5,6 +5,7 @@ import { RelatedBlueprints } from "./RelatedBlueprints";
 import { duplicateDraft, setMaxPending } from "./capacity";
 import { probeChainHead } from "./connectivity";
 import { exportQueueCsv } from "./csv";
+import { downloadTextFile, queueExportBasename } from "./download";
 import { importQueueJson } from "./importQueue";
 import { searchItems, setItemNote } from "./notes";
 import { dataPreview, parseDataJson, setItemData } from "./payload";
@@ -131,10 +132,15 @@ export function Demo() {
     }
   };
 
+  const download = (filename: string, content: string, mime: string) => {
+    const r = downloadTextFile(filename, content, mime);
+    setMessage(r.ok ? `Downloaded ${filename}` : r.reason);
+  };
+
   return (
     <main className="wrap space-y-6 max-w-xl mx-auto p-6 text-white">
       <p className="kicker text-xs uppercase tracking-widest text-emerald-400/80">
-        Educational reference · Passes 1–20 frozen
+        Educational reference · Pass 21 (post-freeze)
       </p>
       <h1 className="text-2xl font-bold text-emerald-400">Offline transaction queue</h1>
       <p className="text-xs opacity-50 font-mono">{summaryLine(state)}</p>
@@ -353,7 +359,7 @@ export function Demo() {
             className="px-2 py-1 rounded-lg text-xs bg-sky-700"
             onClick={() => copy(exportQueueMarkdown(state), "Queue MD copied")}
           >
-            Copy queue MD
+            Copy MD
           </button>
           <button
             type="button"
@@ -373,6 +379,36 @@ export function Demo() {
             }
           >
             Copy drain plan
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-indigo-900"
+            onClick={() => {
+              const base = queueExportBasename();
+              download(`${base}.json`, serializeQueue(state), "application/json");
+            }}
+          >
+            Download JSON
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-indigo-800"
+            onClick={() => {
+              const base = queueExportBasename();
+              download(`${base}.md`, exportQueueMarkdown(state), "text/markdown");
+            }}
+          >
+            Download MD
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 rounded-lg text-xs bg-indigo-700"
+            onClick={() => {
+              const base = queueExportBasename();
+              download(`${base}.csv`, exportQueueCsv(state), "text/csv");
+            }}
+          >
+            Download CSV
           </button>
           <button
             type="button"

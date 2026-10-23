@@ -1,13 +1,13 @@
 # Verification log
 
 **Trust label:** educational-reference  
-**Updated:** 2026-10-23 (Pass 20 freeze)
+**Updated:** 2026-10-23 (Pass 21 post-freeze)
 
 | Claim | Evidence | State |
 | --- | --- | --- |
-| Core queue + storage + ops 8–19 | unit tests under `src/` | verified |
-| session.transact executed here | none | **not claimed** |
-| Live broadcast | none | **not claimed** |
+| Core through Pass 20 | unit + docs | verified / frozen |
+| downloadTextFile / basename | `src/download.test.ts` | verified |
+| session.transact / broadcast | none | **not claimed** |
 
 ```bash
 npm test && npm run typecheck
